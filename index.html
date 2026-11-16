@@ -7,76 +7,140 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,"SF Pro Display",Inter,Roboto,sans-serif;color:#fff;user-select:none}
-#start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:10;background:#111}
-#start h1{font-size:48px;font-weight:600;letter-spacing:-1px}
-#start p{opacity:.5}
-#start button{padding:14px 32px;border-radius:30px;border:1px solid #fff4;background:#fff2;color:#fff;font-size:18px}
+#splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:10;background:#111}
+#splash h1{font-size:48px;font-weight:600;letter-spacing:-1px}
+#splash p{opacity:.5}
+#splash button{padding:14px 32px;border-radius:30px;border:1px solid #fff4;background:#fff2;color:#fff;font-size:18px}
 #stage{position:fixed;inset:0;display:flex}
 .eye{position:relative;flex:1;overflow:hidden}
 .eye video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hud{position:absolute;inset:0;pointer-events:none}
-.card{position:absolute;left:50%;top:12%;transform:translateX(-50%);width:min(80%,520px);padding:20px 24px;border-radius:24px;background:rgba(255,255,255,.2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.5);transition:opacity .4s ease,transform .4s ease}
+.glass{background:rgba(255,255,255,.2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.5)}
+
+/* Overview */
+.ov{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92%,640px);max-height:86%;overflow-y:auto;padding:22px 24px;border-radius:24px;animation:fade .5s ease;pointer-events:auto}
+.ov h2{font-size:clamp(22px,4.5vw,32px);font-weight:600;line-height:1.1}
+.ov .sub{opacity:.6;font-size:14px;margin-top:4px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.chip{font-size:13px;padding:4px 10px;border-radius:12px;background:rgba(255,255,255,.22)}
+.cols{display:grid;grid-template-columns:1.3fr 1fr;gap:18px}
+.ov h3{font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:.6;margin:6px 0 8px}
+.ov ul{list-style:none}
+.ov li{font-size:14px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;gap:10px}
+.ov li b{font-weight:600;white-space:nowrap}
+.ov ol{padding-left:20px;font-size:13px;opacity:.85;columns:2;column-gap:24px}
+.ov ol li{display:list-item;border:0;padding:2px 0}
+.go{margin-top:16px;text-align:center;padding:12px;border-radius:16px;background:rgba(255,255,255,.28);font-weight:600}
+
+/* Steps */
+.card{position:absolute;left:50%;top:10%;transform:translateX(-50%);width:min(84%,560px);padding:20px 24px;border-radius:24px;transition:opacity .4s ease,transform .4s ease}
 .card.out{opacity:0;transform:translate(-50%,-20px)}
 .card.in{opacity:0;transform:translate(-50%,20px) scale(.95)}
 .num{display:inline-block;font-size:13px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,.25);margin-bottom:10px}
 .cur{font-size:clamp(20px,4.5vw,34px);font-weight:600;line-height:1.15}
-.nxt{font-size:clamp(13px,2.5vw,18px);opacity:.4;margin-top:8px}
-.timers{position:absolute;bottom:10%;left:0;right:0;display:flex;justify-content:center;gap:24px}
+.det{font-size:clamp(14px,2.8vw,19px);opacity:.85;margin-top:8px;line-height:1.3}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tag{font-size:13px;padding:3px 10px;border-radius:10px;background:rgba(255,255,255,.9);color:#222;font-weight:600}
+.nxt{font-size:clamp(12px,2.3vw,16px);opacity:.4;margin-top:12px}
+.timers{position:absolute;bottom:9%;left:0;right:0;display:flex;justify-content:center;gap:22px}
 .t{display:flex;flex-direction:column;align-items:center;gap:6px;animation:fade .5s ease}
 .t svg{width:clamp(70px,14vw,120px);height:clamp(70px,14vw,120px);transform:rotate(-90deg)}
-.t .lbl{font-size:13px;opacity:.8}
+.t .lbl{font-size:13px;opacity:.85}
 .t text{transform:rotate(90deg);transform-origin:50% 50%;font-size:20px;font-weight:600;fill:#fff}
 .t.alarm{animation:pulse .8s ease-in-out infinite}
 .done{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 .done.show{display:flex;animation:fade .6s ease}
 .done .ck{width:90px;height:90px;border-radius:50%;background:#34C759;display:flex;align-items:center;justify-content:center;font-size:52px}
 .done .txt{font-size:32px;font-weight:600;text-shadow:0 2px 12px #0008}
-.mic{position:absolute;top:16px;right:16px;font-size:12px;padding:4px 10px;border-radius:12px;background:rgba(0,0,0,.35)}
+.mic{position:absolute;top:14px;right:14px;font-size:12px;padding:4px 10px;border-radius:12px;background:rgba(0,0,0,.4)}
+.mic.off{background:rgba(255,90,79,.7)}
+.hidden{display:none!important}
+
 #ui{position:fixed;bottom:12px;left:12px;display:flex;gap:8px;z-index:5}
 #ui button{padding:8px 12px;border-radius:16px;border:1px solid #fff4;background:#0006;color:#fff;font-size:12px}
-.stereo .card{width:86%;padding:12px 14px;border-radius:16px}
-.stereo .cur{font-size:18px}.stereo .nxt{font-size:12px}
-.stereo .timers{gap:10px}.stereo .t svg{width:60px;height:60px}
-@keyframes fade{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+
+.stereo .ov{padding:12px;border-radius:16px}
+.stereo .ov h2{font-size:18px}.stereo .cols{grid-template-columns:1fr}.stereo .ov ol{columns:1}
+.stereo .ov li{font-size:11px;padding:2px 0}.stereo .chip{font-size:10px}
+.stereo .card{width:88%;padding:12px 14px;border-radius:16px}
+.stereo .cur{font-size:17px}.stereo .det{font-size:12px}.stereo .nxt{font-size:11px}.stereo .tag{font-size:10px}
+.stereo .timers{gap:8px}.stereo .t svg{width:56px;height:56px}
+@keyframes fade{from{opacity:0;transform:translate(-50%,-50%) scale(.95)}to{opacity:1}}
+.t,.done.show{animation-name:fade2}
+@keyframes fade2{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
 @keyframes pulse{50%{transform:scale(1.08)}}
 </style>
 </head>
 <body>
-<div id="start"><h1>Mise</h1><p>Cada paso, en su lugar.</p><button id="go">Empezar</button></div>
+<div id="splash"><h1>Mise</h1><p>Cada paso, en su lugar.</p><button id="open">Abrir</button></div>
 <div id="stage"></div>
 <div id="ui"><button id="stereoBtn">Modo cartón</button><button id="speedBtn">Velocidad x1</button></div>
 
 <script>
+const RECIPE={
+ name:"Spaghetti al pomodoro",
+ sub:"Pasta con salsa de jitomate fresco, ajo y albahaca",
+ chips:["2 porciones","30 min","Fácil","12 pasos"],
+ ingredients:[
+  ["Spaghetti","200 g"],["Jitomate bola","4 piezas"],["Ajo","3 dientes"],["Cebolla blanca","½ pieza"],
+  ["Aceite de oliva","3 cdas"],["Albahaca fresca","8 hojas"],["Queso parmesano","30 g"],
+  ["Hojuelas de chile","¼ cdta"],["Sal","1 cda + al gusto"],["Pimienta","al gusto"],["Agua","2 L"]
+ ],
+ tools:["Olla grande","Sartén","Tabla y cuchillo","Colador","Cuchara de madera","Rallador","Taza medidora"]
+};
 const STEPS=[
- {t:"Hierve 2 L de agua con sal"},
- {t:"Agrega la pasta",timer:{name:"Pasta",s:480}},
- {t:"Pica 3 dientes de ajo"},
- {t:"Sofríe el ajo en aceite",timer:{name:"Ajo",s:60}},
- {t:"Agrega jitomate y albahaca",timer:{name:"Salsa",s:300}},
- {t:"Escurre y mezcla"},
- {t:"Sirve"}
+ {t:"Pon a hervir el agua",d:"Llena la olla grande y ponla a fuego alto.",q:["2 L agua"],timer:{name:"Agua",s:480}},
+ {t:"Pica la cebolla",d:"En cubos pequeños, lo más fino que puedas.",q:["½ cebolla"]},
+ {t:"Lamina el ajo",d:"Rebanadas delgadas. Quita el germen si tiene.",q:["3 dientes"]},
+ {t:"Corta los jitomates",d:"En cubos medianos. Guarda el jugo de la tabla.",q:["4 jitomates"]},
+ {t:"Calienta el aceite",d:"Sartén a fuego medio hasta que el aceite brille.",q:["3 cdas aceite"]},
+ {t:"Sofríe la cebolla",d:"Mueve seguido hasta que esté transparente.",timer:{name:"Cebolla",s:240}},
+ {t:"Agrega ajo y chile",d:"Que dore apenas. Si se quema, amarga.",q:["¼ cdta chile"],timer:{name:"Ajo",s:60}},
+ {t:"Agrega los jitomates",d:"Sal y pimienta. Baja a fuego bajo y aplasta con la cuchara.",q:["Sal","Pimienta"],timer:{name:"Salsa",s:720}},
+ {t:"Cuece la pasta",d:"Cuando el agua hierva, sala y agrega el spaghetti.",q:["1 cda sal","200 g pasta"],timer:{name:"Pasta",s:540}},
+ {t:"Guarda agua y escurre",d:"Antes de escurrir, aparta media taza del agua de cocción.",q:["½ taza agua"]},
+ {t:"Mezcla en la sartén",d:"Pasta + salsa + un chorrito del agua. Mueve hasta que brille.",timer:{name:"Mezcla",s:60}},
+ {t:"Termina y sirve",d:"Apaga el fuego. Albahaca rota con la mano y parmesano encima.",q:["8 hojas albahaca","30 g parmesano"]}
 ];
 const C={base:"#FFFFFF",mid:"#FFB340",end:"#FF5A4F"};
-let step=0,timers=[],stereo=false,speed=1,stream=null,startTime=0,finished=false;
+let phase="overview",step=0,timers=[],stereo=false,speed=1,stream=null,startTime=0,micState="…";
 const stage=document.getElementById("stage");
 
-function eyeHTML(){return `<div class="eye"><video autoplay playsinline muted></video>
-<div class="hud"><div class="card"></div><div class="timers"></div>
-<div class="done"><div class="ck">✓</div><div class="txt"></div></div><div class="mic">🎙 di "siguiente"</div></div></div>`}
+/* ---------- Render ---------- */
+function overviewHTML(){
+ return `<h2>${RECIPE.name}</h2><div class="sub">${RECIPE.sub}</div>
+<div class="chips">${RECIPE.chips.map(c=>`<span class="chip">${c}</span>`).join("")}</div>
+<div class="cols"><div><h3>Ingredientes</h3><ul>${RECIPE.ingredients.map(([n,q])=>`<li><span>${n}</span><b>${q}</b></li>`).join("")}</ul></div>
+<div><h3>Utensilios</h3><ul>${RECIPE.tools.map(t=>`<li><span>${t}</span></li>`).join("")}</ul></div></div>
+<h3 style="margin-top:14px">Pasos</h3><ol>${STEPS.map(s=>`<li>${s.t}</li>`).join("")}</ol>
+<div class="go">Di “Iniciar” o toca aquí</div>`;
+}
+function eyeHTML(){return `<div class="eye"><video autoplay playsinline muted></video><div class="hud">
+<div class="ov glass"></div><div class="card glass hidden"></div><div class="timers"></div>
+<div class="done"><div class="ck">✓</div><div class="txt"></div></div><div class="mic"></div></div></div>`}
 
 function build(){
  stage.innerHTML=eyeHTML()+(stereo?eyeHTML():"");
  stage.classList.toggle("stereo",stereo);
  stage.querySelectorAll("video").forEach(v=>v.srcObject=stream);
- renderCard(false);renderTimers();
- if(finished)showDone();
+ stage.querySelectorAll(".ov").forEach(o=>o.innerHTML=overviewHTML());
+ applyPhase();renderCard(false);renderTimers();renderMic();
 }
-
+function applyPhase(){
+ stage.querySelectorAll(".ov").forEach(o=>o.classList.toggle("hidden",phase!=="overview"));
+ stage.querySelectorAll(".card").forEach(c=>c.classList.toggle("hidden",phase!=="steps"));
+ stage.querySelectorAll(".done").forEach(d=>d.classList.toggle("show",phase==="done"));
+ if(phase==="done"){
+  const min=Math.max(1,Math.round((Date.now()-startTime)/60000*speed));
+  stage.querySelectorAll(".done .txt").forEach(t=>t.textContent=`Listo. ${min} min.`);
+ }
+}
 function cardHTML(){
- const nxt=STEPS[step+1]?`Siguiente: ${STEPS[step+1].t}`:"Último paso";
- return `<span class="num">${step+1}/${STEPS.length}</span><div class="cur">${STEPS[step].t}</div><div class="nxt">${nxt}</div>`;
+ const s=STEPS[step],n=STEPS[step+1];
+ return `<span class="num">${step+1}/${STEPS.length}</span><div class="cur">${s.t}</div><div class="det">${s.d}</div>
+${s.q?`<div class="tags">${s.q.map(x=>`<span class="tag">${x}</span>`).join("")}</div>`:""}
+<div class="nxt">${n?"Siguiente: "+n.t:"Último paso"}</div>`;
 }
-
 function renderCard(anim=true){
  stage.querySelectorAll(".card").forEach(c=>{
   if(!anim){c.innerHTML=cardHTML();return}
@@ -85,60 +149,86 @@ function renderCard(anim=true){
    requestAnimationFrame(()=>requestAnimationFrame(()=>c.classList.remove("in")))},350);
  });
 }
-
 function ring(t){
  const r=40,L=2*Math.PI*r,p=Math.max(t.left/t.total,0);
  const col=p>.3?C.base:p>.1?C.mid:C.end;
- const m=Math.floor(Math.max(t.left,0)/60),s=Math.floor(Math.max(t.left,0)%60);
+ const v=Math.max(t.left,0),m=Math.floor(v/60),s=Math.floor(v%60);
  return `<div class="t${p<=.1?" alarm":""}"><svg viewBox="0 0 100 100">
 <circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="9"/>
 <circle cx="50" cy="50" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${L}" stroke-dashoffset="${L*(1-p)}" style="transition:stroke-dashoffset .3s linear,stroke .5s"/>
 <text x="50" y="57" text-anchor="middle">${t.left<=0?"¡Ya!":m+":"+String(s).padStart(2,"0")}</text></svg><div class="lbl">${t.name}</div></div>`;
 }
 function renderTimers(){stage.querySelectorAll(".timers").forEach(e=>e.innerHTML=timers.map(ring).join(""))}
+function renderMic(){stage.querySelectorAll(".mic").forEach(m=>{m.textContent="🎙 "+micState;m.classList.toggle("off",micState.startsWith("sin")||micState.startsWith("bloq"))})}
+function setMic(s){micState=s;renderMic()}
 
+/* ---------- Lógica ---------- */
 let last=performance.now();
 function tick(now){
  const dt=(now-last)/1000*speed;last=now;
- timers.forEach(t=>{const before=t.left;t.left-=dt;if(before>0&&t.left<=0)ding()});
- timers=timers.filter(t=>t.left>-6);
+ timers.forEach(t=>{const b=t.left;t.left-=dt;if(b>0&&t.left<=0)ding(3)});
+ timers=timers.filter(t=>t.left>-8);
  renderTimers();requestAnimationFrame(tick);
 }
+function ding(n=1){try{const a=new AudioContext();for(let i=0;i<n;i++){const o=a.createOscillator(),g=a.createGain(),t0=a.currentTime+i*.35;o.frequency.value=880;g.gain.setValueAtTime(.3,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.3);o.connect(g).connect(a.destination);o.start(t0);o.stop(t0+.3)}}catch(e){}}
+function addTimer(){const tm=STEPS[step].timer;if(tm&&!timers.some(t=>t.name===tm.name))timers.push({name:tm.name,total:tm.s,left:tm.s})}
 
-function ding(){try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.setValueAtTime(.3,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.8);o.connect(g).connect(a.destination);o.start();o.stop(a.currentTime+.8)}catch(e){}}
-
+function begin(){if(phase!=="overview")return;phase="steps";step=0;startTime=Date.now();applyPhase();renderCard(false);addTimer();ding()}
 function next(){
- if(finished)return;
- if(step>=STEPS.length-1){finished=true;showDone();return}
- step++;const tm=STEPS[step].timer;
- if(tm)timers.push({name:tm.name,total:tm.s,left:tm.s});
- renderCard();ding();
+ if(phase==="overview")return begin();
+ if(phase!=="steps")return;
+ if(step>=STEPS.length-1){phase="done";applyPhase();ding(2);return}
+ step++;addTimer();renderCard();ding();
 }
-function prev(){if(finished){finished=false;stage.querySelectorAll(".done").forEach(d=>d.classList.remove("show"));return}if(step>0){step--;renderCard()}}
-
-function showDone(){
- const min=Math.max(1,Math.round((Date.now()-startTime)/60000*speed));
- stage.querySelectorAll(".card").forEach(c=>c.style.opacity=0);
- stage.querySelectorAll(".done").forEach(d=>{d.querySelector(".txt").textContent=`Listo. ${min} min.`;d.classList.add("show")});
+function prev(){
+ if(phase==="done"){phase="steps";applyPhase();return}
+ if(phase!=="steps")return;
+ if(step===0){phase="overview";applyPhase();return}
+ step--;renderCard();
 }
 
-function voice(){
- const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SR){stage.querySelectorAll(".mic").forEach(m=>m.textContent="toca para avanzar");return}
- const r=new SR();r.lang="es-MX";r.continuous=true;r.interimResults=false;
- r.onresult=e=>{const w=e.results[e.results.length-1][0].transcript.toLowerCase();
-  if(w.includes("siguiente"))next();else if(w.includes("atrás")||w.includes("anterior"))prev()};
- r.onend=()=>r.start();
- try{r.start()}catch(e){}
+/* ---------- Voz (con auto-reinicio) ---------- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,listening=false,blocked=false,lastCmd=0,lastTry=0;
+function handle(txt){
+ if(Date.now()-lastCmd<1200)return;
+ const has=(...w)=>w.some(x=>txt.includes(x));
+ let hit=true;
+ if(phase==="overview"&&has("iniciar","inicia","empezar","empieza","comenzar","comienza"))begin();
+ else if(has("siguiente","después","despues","listo"))next();
+ else if(has("atrás","atras","anterior","regresa"))prev();
+ else hit=false;
+ if(hit){lastCmd=Date.now();try{rec.abort()}catch(e){}}
 }
+function startRec(){
+ if(!SR){setMic("sin voz, usa toques");return}
+ if(listening||blocked)return;
+ lastTry=Date.now();
+ try{
+  rec=new SR();rec.lang="es-MX";rec.continuous=false;rec.interimResults=true;rec.maxAlternatives=3;
+  rec.onstart=()=>{listening=true;setMic(phase==="overview"?'di "iniciar"':'di "siguiente"')};
+  rec.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)handle([...e.results[i]].map(a=>a.transcript.toLowerCase()).join(" "))};
+  rec.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed"){blocked=true;setMic("bloqueado: permite el micrófono")}};
+  rec.onend=()=>{listening=false;if(!blocked)setTimeout(startRec,200)};
+  rec.start();
+ }catch(e){listening=false;setTimeout(startRec,800)}
+}
+setInterval(()=>{if(!listening&&!blocked&&Date.now()-lastTry>2500)startRec()},2500);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){listening=false;startRec();lock()}});
 
-stage.addEventListener("click",e=>{e.clientX>innerWidth/2?next():prev()});
+/* ---------- Pantalla siempre encendida ---------- */
+async function lock(){try{await navigator.wakeLock.request("screen")}catch(e){}}
 
-document.getElementById("go").onclick=async()=>{
+/* ---------- Eventos ---------- */
+stage.addEventListener("click",e=>{
+ if(phase==="overview")return begin();
+ e.clientX>innerWidth/2?next():prev();
+});
+document.getElementById("open").onclick=async()=>{
  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false})}
  catch(e){alert("Sin cámara: "+e.message)}
- document.getElementById("start").remove();
- startTime=Date.now();build();voice();requestAnimationFrame(tick);
+ document.getElementById("splash").remove();
+ build();startRec();lock();requestAnimationFrame(tick);
  try{document.documentElement.requestFullscreen()}catch(e){}
 };
 document.getElementById("stereoBtn").onclick=e=>{e.stopPropagation();stereo=!stereo;build()};
