@@ -56,6 +56,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .mic.off{background:rgba(255,90,79,.7)}
 .hidden{display:none!important}
 .ov,.card,.timers,.mic{zoom:var(--z,.6)}
+.stereo .ov,.stereo .card,.stereo .timers,.stereo .mic{zoom:1}
+.stereo .eye{border-right:1px solid #000}
+body.vr #ui{display:none}
 
 #ui{position:fixed;bottom:12px;left:12px;display:flex;gap:8px;z-index:5}
 #ui button{padding:8px 12px;border-radius:16px;border:1px solid #fff4;background:#0006;color:#fff;font-size:12px}
@@ -221,10 +224,20 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden){listening
 async function lock(){try{await navigator.wakeLock.request("screen")}catch(e){}}
 
 /* ---------- Eventos ---------- */
+// En modo cartón/View-Master: cualquier toque (palanca) = siguiente. Mantener presionado 1 s = salir.
+let pressT=0,longFired=false;
+stage.addEventListener("pointerdown",()=>{longFired=false;pressT=setTimeout(()=>{if(stereo){longFired=true;setStereo(false)}},1000)});
+stage.addEventListener("pointerup",()=>clearTimeout(pressT));
 stage.addEventListener("click",e=>{
+ if(longFired)return;
  if(phase==="overview")return begin();
+ if(stereo)return next();
  e.clientX>innerWidth/2?next():prev();
 });
+function setStereo(v){
+ stereo=v;document.body.classList.toggle("vr",v);build();
+ if(v){try{document.documentElement.requestFullscreen().then(()=>screen.orientation.lock("landscape")).catch(()=>{})}catch(e){}}
+}
 document.getElementById("open").onclick=async()=>{
  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false})}
  catch(e){alert("Sin cámara: "+e.message)}
@@ -232,7 +245,7 @@ document.getElementById("open").onclick=async()=>{
  build();startRec();lock();requestAnimationFrame(tick);
  try{document.documentElement.requestFullscreen()}catch(e){}
 };
-document.getElementById("stereoBtn").onclick=e=>{e.stopPropagation();stereo=!stereo;build()};
+document.getElementById("stereoBtn").onclick=e=>{e.stopPropagation();setStereo(true)};
 const SIZES=[["S",.6],["M",.8],["L",1],["XS",.45]];let si=0;
 document.getElementById("sizeBtn").onclick=e=>{e.stopPropagation();si=(si+1)%SIZES.length;document.documentElement.style.setProperty("--z",SIZES[si][1]);e.target.textContent="Tamaño "+SIZES[si][0]};
 document.getElementById("speedBtn").onclick=e=>{e.stopPropagation();speed=speed===1?10:speed===10?30:1;e.target.textContent="Velocidad x"+speed};
