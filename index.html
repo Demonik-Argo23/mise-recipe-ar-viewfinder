@@ -18,7 +18,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .glass{background:rgba(255,255,255,.2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.5)}
 
 /* Overview */
-.ov{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92%,640px);max-height:86%;overflow-y:auto;padding:22px 24px;border-radius:24px;animation:fade .5s ease;pointer-events:auto}
+.ov{position:absolute;inset:0;margin:auto;height:fit-content;width:min(92%,640px);max-height:90%;overflow-y:auto;padding:22px 24px;border-radius:24px;animation:fade .5s ease;pointer-events:auto}
 .ov h2{font-size:clamp(22px,4.5vw,32px);font-weight:600;line-height:1.1}
 .ov .sub{opacity:.6;font-size:14px;margin-top:4px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
@@ -33,9 +33,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .go{margin-top:16px;text-align:center;padding:12px;border-radius:16px;background:rgba(255,255,255,.28);font-weight:600}
 
 /* Steps */
-.card{position:absolute;left:50%;top:10%;transform:translateX(-50%);width:min(84%,560px);padding:20px 24px;border-radius:24px;transition:opacity .4s ease,transform .4s ease}
-.card.out{opacity:0;transform:translate(-50%,-20px)}
-.card.in{opacity:0;transform:translate(-50%,20px) scale(.95)}
+.card{position:absolute;left:0;right:0;margin:0 auto;top:8%;width:min(84%,560px);padding:20px 24px;border-radius:24px;transition:opacity .4s ease,transform .4s ease}
+.card.out{opacity:0;transform:translateY(-20px)}
+.card.in{opacity:0;transform:translateY(20px) scale(.95)}
 .num{display:inline-block;font-size:13px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,.25);margin-bottom:10px}
 .cur{font-size:clamp(20px,4.5vw,34px);font-weight:600;line-height:1.15}
 .det{font-size:clamp(14px,2.8vw,19px);opacity:.85;margin-top:8px;line-height:1.3}
@@ -43,7 +43,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .tag{font-size:13px;padding:3px 10px;border-radius:10px;background:rgba(255,255,255,.9);color:#222;font-weight:600}
 .nxt{font-size:clamp(12px,2.3vw,16px);opacity:.4;margin-top:12px}
 .timers{position:absolute;bottom:9%;left:0;right:0;display:flex;justify-content:center;gap:22px}
-.t{display:flex;flex-direction:column;align-items:center;gap:6px;animation:fade .5s ease}
+.t{display:flex;flex-direction:column;align-items:center;gap:6px}
 .t svg{width:clamp(70px,14vw,120px);height:clamp(70px,14vw,120px);transform:rotate(-90deg)}
 .t .lbl{font-size:13px;opacity:.85}
 .t text{transform:rotate(90deg);transform-origin:50% 50%;font-size:20px;font-weight:600;fill:#fff}
@@ -55,6 +55,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .mic{position:absolute;top:14px;right:14px;font-size:12px;padding:4px 10px;border-radius:12px;background:rgba(0,0,0,.4)}
 .mic.off{background:rgba(255,90,79,.7)}
 .hidden{display:none!important}
+.ov,.card,.timers,.mic{zoom:var(--z,.6)}
 
 #ui{position:fixed;bottom:12px;left:12px;display:flex;gap:8px;z-index:5}
 #ui button{padding:8px 12px;border-radius:16px;border:1px solid #fff4;background:#0006;color:#fff;font-size:12px}
@@ -65,8 +66,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .stereo .card{width:88%;padding:12px 14px;border-radius:16px}
 .stereo .cur{font-size:17px}.stereo .det{font-size:12px}.stereo .nxt{font-size:11px}.stereo .tag{font-size:10px}
 .stereo .timers{gap:8px}.stereo .t svg{width:56px;height:56px}
-@keyframes fade{from{opacity:0;transform:translate(-50%,-50%) scale(.95)}to{opacity:1}}
-.t,.done.show{animation-name:fade2}
+@keyframes fade{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+.done.show{animation-name:fade2}
 @keyframes fade2{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
 @keyframes pulse{50%{transform:scale(1.08)}}
 </style>
@@ -74,7 +75,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 <body>
 <div id="splash"><h1>Mise</h1><p>Cada paso, en su lugar.</p><button id="open">Abrir</button></div>
 <div id="stage"></div>
-<div id="ui"><button id="stereoBtn">Modo cartón</button><button id="speedBtn">Velocidad x1</button></div>
+<div id="ui"><button id="stereoBtn">Modo cartón</button><button id="sizeBtn">Tamaño S</button><button id="speedBtn">Velocidad x1</button></div>
 
 <script>
 const RECIPE={
@@ -163,12 +164,12 @@ function renderMic(){stage.querySelectorAll(".mic").forEach(m=>{m.textContent="�
 function setMic(s){micState=s;renderMic()}
 
 /* ---------- Lógica ---------- */
-let last=performance.now();
+let last=performance.now(),lastR=0;
 function tick(now){
  const dt=(now-last)/1000*speed;last=now;
  timers.forEach(t=>{const b=t.left;t.left-=dt;if(b>0&&t.left<=0)ding(3)});
  timers=timers.filter(t=>t.left>-8);
- renderTimers();requestAnimationFrame(tick);
+ if(now-lastR>200){renderTimers();lastR=now}requestAnimationFrame(tick);
 }
 function ding(n=1){try{const a=new AudioContext();for(let i=0;i<n;i++){const o=a.createOscillator(),g=a.createGain(),t0=a.currentTime+i*.35;o.frequency.value=880;g.gain.setValueAtTime(.3,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.3);o.connect(g).connect(a.destination);o.start(t0);o.stop(t0+.3)}}catch(e){}}
 function addTimer(){const tm=STEPS[step].timer;if(tm&&!timers.some(t=>t.name===tm.name))timers.push({name:tm.name,total:tm.s,left:tm.s})}
@@ -232,6 +233,8 @@ document.getElementById("open").onclick=async()=>{
  try{document.documentElement.requestFullscreen()}catch(e){}
 };
 document.getElementById("stereoBtn").onclick=e=>{e.stopPropagation();stereo=!stereo;build()};
+const SIZES=[["S",.6],["M",.8],["L",1],["XS",.45]];let si=0;
+document.getElementById("sizeBtn").onclick=e=>{e.stopPropagation();si=(si+1)%SIZES.length;document.documentElement.style.setProperty("--z",SIZES[si][1]);e.target.textContent="Tamaño "+SIZES[si][0]};
 document.getElementById("speedBtn").onclick=e=>{e.stopPropagation();speed=speed===1?10:speed===10?30:1;e.target.textContent="Velocidad x"+speed};
 </script>
 </body>
