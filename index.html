@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Mise</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,"SF Pro Display",Inter,Roboto,sans-serif;color:#fff;user-select:none}
+#start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:10;background:#111}
+#start h1{font-size:48px;font-weight:600;letter-spacing:-1px}
+#start p{opacity:.5}
+#start button{padding:14px 32px;border-radius:30px;border:1px solid #fff4;background:#fff2;color:#fff;font-size:18px}
+#stage{position:fixed;inset:0;display:flex}
+.eye{position:relative;flex:1;overflow:hidden}
+.eye video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hud{position:absolute;inset:0;pointer-events:none}
+.card{position:absolute;left:50%;top:12%;transform:translateX(-50%);width:min(80%,520px);padding:20px 24px;border-radius:24px;background:rgba(255,255,255,.2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.5);transition:opacity .4s ease,transform .4s ease}
+.card.out{opacity:0;transform:translate(-50%,-20px)}
+.card.in{opacity:0;transform:translate(-50%,20px) scale(.95)}
+.num{display:inline-block;font-size:13px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,.25);margin-bottom:10px}
+.cur{font-size:clamp(20px,4.5vw,34px);font-weight:600;line-height:1.15}
+.nxt{font-size:clamp(13px,2.5vw,18px);opacity:.4;margin-top:8px}
+.timers{position:absolute;bottom:10%;left:0;right:0;display:flex;justify-content:center;gap:24px}
+.t{display:flex;flex-direction:column;align-items:center;gap:6px;animation:fade .5s ease}
+.t svg{width:clamp(70px,14vw,120px);height:clamp(70px,14vw,120px);transform:rotate(-90deg)}
+.t .lbl{font-size:13px;opacity:.8}
+.t text{transform:rotate(90deg);transform-origin:50% 50%;font-size:20px;font-weight:600;fill:#fff}
+.t.alarm{animation:pulse .8s ease-in-out infinite}
+.done{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.done.show{display:flex;animation:fade .6s ease}
+.done .ck{width:90px;height:90px;border-radius:50%;background:#34C759;display:flex;align-items:center;justify-content:center;font-size:52px}
+.done .txt{font-size:32px;font-weight:600;text-shadow:0 2px 12px #0008}
+.mic{position:absolute;top:16px;right:16px;font-size:12px;padding:4px 10px;border-radius:12px;background:rgba(0,0,0,.35)}
+#ui{position:fixed;bottom:12px;left:12px;display:flex;gap:8px;z-index:5}
+#ui button{padding:8px 12px;border-radius:16px;border:1px solid #fff4;background:#0006;color:#fff;font-size:12px}
+.stereo .card{width:86%;padding:12px 14px;border-radius:16px}
+.stereo .cur{font-size:18px}.stereo .nxt{font-size:12px}
+.stereo .timers{gap:10px}.stereo .t svg{width:60px;height:60px}
+@keyframes fade{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+@keyframes pulse{50%{transform:scale(1.08)}}
+</style>
+</head>
+<body>
+<div id="start"><h1>Mise</h1><p>Cada paso, en su lugar.</p><button id="go">Empezar</button></div>
+<div id="stage"></div>
+<div id="ui"><button id="stereoBtn">Modo cartón</button><button id="speedBtn">Velocidad x1</button></div>
+
+<script>
+const STEPS=[
+ {t:"Hierve 2 L de agua con sal"},
+ {t:"Agrega la pasta",timer:{name:"Pasta",s:480}},
+ {t:"Pica 3 dientes de ajo"},
+ {t:"Sofríe el ajo en aceite",timer:{name:"Ajo",s:60}},
+ {t:"Agrega jitomate y albahaca",timer:{name:"Salsa",s:300}},
+ {t:"Escurre y mezcla"},
+ {t:"Sirve"}
+];
+const C={base:"#FFFFFF",mid:"#FFB340",end:"#FF5A4F"};
+let step=0,timers=[],stereo=false,speed=1,stream=null,startTime=0,finished=false;
+const stage=document.getElementById("stage");
+
+function eyeHTML(){return `<div class="eye"><video autoplay playsinline muted></video>
+<div class="hud"><div class="card"></div><div class="timers"></div>
+<div class="done"><div class="ck">✓</div><div class="txt"></div></div><div class="mic">🎙 di "siguiente"</div></div></div>`}
+
+function build(){
+ stage.innerHTML=eyeHTML()+(stereo?eyeHTML():"");
+ stage.classList.toggle("stereo",stereo);
+ stage.querySelectorAll("video").forEach(v=>v.srcObject=stream);
+ renderCard(false);renderTimers();
+ if(finished)showDone();
+}
+
+function cardHTML(){
+ const nxt=STEPS[step+1]?`Siguiente: ${STEPS[step+1].t}`:"Último paso";
+ return `<span class="num">${step+1}/${STEPS.length}</span><div class="cur">${STEPS[step].t}</div><div class="nxt">${nxt}</div>`;
+}
+
+function renderCard(anim=true){
+ stage.querySelectorAll(".card").forEach(c=>{
+  if(!anim){c.innerHTML=cardHTML();return}
+  c.classList.add("out");
+  setTimeout(()=>{c.innerHTML=cardHTML();c.classList.remove("out");c.classList.add("in");
+   requestAnimationFrame(()=>requestAnimationFrame(()=>c.classList.remove("in")))},350);
+ });
+}
+
+function ring(t){
+ const r=40,L=2*Math.PI*r,p=Math.max(t.left/t.total,0);
+ const col=p>.3?C.base:p>.1?C.mid:C.end;
+ const m=Math.floor(Math.max(t.left,0)/60),s=Math.floor(Math.max(t.left,0)%60);
+ return `<div class="t${p<=.1?" alarm":""}"><svg viewBox="0 0 100 100">
+<circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="9"/>
+<circle cx="50" cy="50" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${L}" stroke-dashoffset="${L*(1-p)}" style="transition:stroke-dashoffset .3s linear,stroke .5s"/>
+<text x="50" y="57" text-anchor="middle">${t.left<=0?"¡Ya!":m+":"+String(s).padStart(2,"0")}</text></svg><div class="lbl">${t.name}</div></div>`;
+}
+function renderTimers(){stage.querySelectorAll(".timers").forEach(e=>e.innerHTML=timers.map(ring).join(""))}
+
+let last=performance.now();
+function tick(now){
+ const dt=(now-last)/1000*speed;last=now;
+ timers.forEach(t=>{const before=t.left;t.left-=dt;if(before>0&&t.left<=0)ding()});
+ timers=timers.filter(t=>t.left>-6);
+ renderTimers();requestAnimationFrame(tick);
+}
+
+function ding(){try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.setValueAtTime(.3,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.8);o.connect(g).connect(a.destination);o.start();o.stop(a.currentTime+.8)}catch(e){}}
+
+function next(){
+ if(finished)return;
+ if(step>=STEPS.length-1){finished=true;showDone();return}
+ step++;const tm=STEPS[step].timer;
+ if(tm)timers.push({name:tm.name,total:tm.s,left:tm.s});
+ renderCard();ding();
+}
+function prev(){if(finished){finished=false;stage.querySelectorAll(".done").forEach(d=>d.classList.remove("show"));return}if(step>0){step--;renderCard()}}
+
+function showDone(){
+ const min=Math.max(1,Math.round((Date.now()-startTime)/60000*speed));
+ stage.querySelectorAll(".card").forEach(c=>c.style.opacity=0);
+ stage.querySelectorAll(".done").forEach(d=>{d.querySelector(".txt").textContent=`Listo. ${min} min.`;d.classList.add("show")});
+}
+
+function voice(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){stage.querySelectorAll(".mic").forEach(m=>m.textContent="toca para avanzar");return}
+ const r=new SR();r.lang="es-MX";r.continuous=true;r.interimResults=false;
+ r.onresult=e=>{const w=e.results[e.results.length-1][0].transcript.toLowerCase();
+  if(w.includes("siguiente"))next();else if(w.includes("atrás")||w.includes("anterior"))prev()};
+ r.onend=()=>r.start();
+ try{r.start()}catch(e){}
+}
+
+stage.addEventListener("click",e=>{e.clientX>innerWidth/2?next():prev()});
+
+document.getElementById("go").onclick=async()=>{
+ try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false})}
+ catch(e){alert("Sin cámara: "+e.message)}
+ document.getElementById("start").remove();
+ startTime=Date.now();build();voice();requestAnimationFrame(tick);
+ try{document.documentElement.requestFullscreen()}catch(e){}
+};
+document.getElementById("stereoBtn").onclick=e=>{e.stopPropagation();stereo=!stereo;build()};
+document.getElementById("speedBtn").onclick=e=>{e.stopPropagation();speed=speed===1?10:speed===10?30:1;e.target.textContent="Velocidad x"+speed};
+</script>
+</body>
+</html>
