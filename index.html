@@ -57,7 +57,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 /* Gestos */
 .gest{position:absolute;top:14px;left:14px;font-size:12px;padding:4px 10px;border-radius:12px;background:rgba(0,0,0,.4);transition:transform .2s,background .2s;zoom:var(--z,.6)}
 .gest.flash{background:#34C759;transform:scale(1.25)}
-.stereo .gest{top:auto;bottom:7%;left:0;right:0;margin:auto;width:fit-content;zoom:calc(var(--vz,.7) * .6)}
+.stereo .gest{top:auto;bottom:12%;left:0;right:0;margin:auto;width:fit-content;zoom:calc(var(--vz,.7) * .6)}
 .pill{position:absolute;left:0;right:0;margin:0 auto;top:6%;width:fit-content;max-width:80%;padding:6px 14px;border-radius:16px;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transform:translateY(-10px);transition:opacity .35s,transform .35s;zoom:var(--z,.6)}
 .stereo .pill{top:18%;zoom:calc(var(--vz,.7) * .6)}
 #stage.min .pill{opacity:1;transform:none}
@@ -68,6 +68,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 /* Visor: cada ojo es un círculo centrado bajo su lente */
 #stage.stereo{display:block}
 .stereo .eye{position:absolute;flex:none;width:var(--vp,300px);height:var(--vp,300px);top:calc(50% - var(--vp,300px)/2 + var(--vy,0px));border-radius:50%}
+.stereo .eye{border-radius:0;-webkit-mask-image:radial-gradient(circle closest-side,#000 72%,transparent 100%);mask-image:radial-gradient(circle closest-side,#000 72%,transparent 100%)}
+body.cal .stereo .eye{-webkit-mask-image:none;mask-image:none;border-radius:50%}
 .stereo .eye.L{left:calc(50% - var(--ipd,320px)/2 - var(--vp,300px)/2)}
 .stereo .eye.R{left:calc(50% + var(--ipd,320px)/2 - var(--vp,300px)/2)}
 .stereo .ov,.stereo .card,.stereo .timers,.stereo .mic{zoom:calc(var(--vz,.7) * .6)}
@@ -84,8 +86,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .stereo .ov li{padding:1px 0}
 .stereo .cols>div:nth-child(2),.stereo .ov ol,.stereo .ov .stepsH,.stereo .ov .sub,.stereo .ov .go{display:none}
 .stereo .card{top:16%;width:62%}
-.stereo .timers{bottom:13%}
-.stereo .mic{top:7%;left:0;right:0;margin:auto;width:fit-content}
+.stereo .timers{bottom:20%}
+.stereo .mic{top:11%;left:0;right:0;margin:auto;width:fit-content}
 body.cal .eye::after{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid #FFB340;pointer-events:none}
 body.cal .eye::before{content:"+";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;color:#FFB340;z-index:2}
 body.vr #ui,body.cal #ui{display:none}
