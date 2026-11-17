@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Mise · Pruébatelo</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,"SF Pro Display",Inter,Roboto,sans-serif;color:#fff}
+#wrap{position:fixed;inset:0;overflow:hidden;transform:scaleX(-1)}
+#v,#c{position:absolute}
+#splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#111;z-index:10;text-align:center;padding:20px}
+#splash h1{font-size:44px;font-weight:600}
+#splash p{opacity:.55}
+button{padding:10px 18px;border-radius:20px;border:1px solid #fff4;background:#fff2;color:#fff;font-size:15px}
+#status{position:fixed;top:12px;left:50%;transform:translateX(-50%);font-size:13px;padding:5px 12px;border-radius:12px;background:#0008;z-index:5}
+#bar{position:fixed;bottom:14px;left:0;right:0;display:flex;justify-content:center;gap:10px;z-index:5}
+#panel{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;gap:8px;padding:12px 16px;border-radius:16px;background:#000c;font-size:12px;z-index:5}
+#panel.show{display:flex}
+#panel label{display:flex;justify-content:space-between;align-items:center;gap:12px}
+#panel input{width:160px}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="splash"><h1>Mise</h1><p>Prueba virtual del visor con face tracking.<br>Usa la cámara frontal.</p><button id="go">Iniciar</button></div>
+<div id="wrap"><video id="v" playsinline muted autoplay></video><canvas id="c"></canvas></div>
+<div id="status">Cargando…</div>
+<div id="panel">
+ <label>Tamaño<input id="s" type="range" min="70" max="140"></label>
+ <label>Arriba / abajo<input id="y" type="range" min="-60" max="60"></label>
+ <label>Adelante / atrás<input id="z" type="range" min="-60" max="120"></label>
+ <label>Ver maniquí<input id="m" type="checkbox"></label>
+</div>
+<div id="bar"><button id="adj">⚙ Ajustar</button><button id="shot">📸 Foto</button></div>
+
+<script type="module">
+import * as THREE from "three";
+import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+
+const V="0.10.21";
+const FACE_MODEL="https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const $=id=>document.getElementById(id);
+const video=$("v"),canvas=$("c"),status=t=>$("status").textContent=t;
+
+/* ---------- Three.js ---------- */
+const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(63,1,1,2000); // FOV vertical que asume MediaPipe
+scene.add(new THREE.HemisphereLight(0xffffff,0x553322,1.4));
+const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(10,20,40);scene.add(sun);
+
+const anchor=new THREE.Group();anchor.matrixAutoUpdate=false;anchor.visible=false;scene.add(anchor);
+const offset=new THREE.Group();anchor.add(offset);
+window.__mise={anchor}; // para depurar
+let maniqui=null;
+const occluder=new THREE.MeshBasicMaterial({colorWrite:false});
+const skin=new THREE.MeshStandardMaterial({color:0xbbbab8,roughness:.5});
+
+new GLTFLoader().load("visor.glb",g=>{
+ const m=g.scene;
+ m.rotation.y=Math.PI;      // en Blender el visor mira a +Y
+ m.scale.setScalar(100);    // metros -> cm (unidades de MediaPipe)
+ const logo=m.getObjectByName("Logo");if(logo)logo.scale.x*=-1; // se lee bien en la vista espejo
+ maniqui=m.getObjectByName("Maniqui");
+ if(maniqui){maniqui.material=occluder;maniqui.renderOrder=-1}
+ offset.add(m);
+},undefined,e=>status("No cargó visor.glb"));
+
+/* ---------- Ajuste (se guarda) ---------- */
+let cal={s:100,y:20,z:53};
+try{Object.assign(cal,JSON.parse(localStorage.getItem("miseCara")||"{}"))}catch(e){}
+function applyCal(){
+ offset.scale.setScalar(cal.s/100);
+ offset.position.set(0,cal.y/10,cal.z/10);
+ try{localStorage.setItem("miseCara",JSON.stringify(cal))}catch(e){}
+}
+for(const k of ["s","y","z"]){$(k).value=cal[k];$(k).oninput=()=>{cal[k]=+$(k).value;applyCal()}}
+$("m").onchange=()=>{if(maniqui)maniqui.material=$("m").checked?skin:occluder};
+applyCal();
+$("adj").onclick=()=>$("panel").classList.toggle("show");
+
+/* ---------- Tamaño: video y canvas cubren la pantalla con el mismo recorte ---------- */
+function layout(){
+ const vw=video.videoWidth||640,vh=video.videoHeight||480,W=innerWidth,H=innerHeight;
+ const k=Math.max(W/vw,H/vh),w=vw*k,h=vh*k;
+ for(const el of [video,canvas])Object.assign(el.style,{width:w+"px",height:h+"px",left:(W-w)/2+"px",top:(H-h)/2+"px"});
+ renderer.setSize(w,h,false);
+ camera.aspect=vw/vh;camera.updateProjectionMatrix();
+}
+addEventListener("resize",layout);
+video.addEventListener("loadedmetadata",layout);
+
+/* ---------- Face tracking ---------- */
+let fl=null;
+async function initFace(){
+ const {FilesetResolver,FaceLandmarker}=await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${V}/vision_bundle.mjs`);
+ const fs=await FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${V}/wasm`);
+ const opts=d=>({baseOptions:{modelAssetPath:FACE_MODEL,delegate:d},runningMode:"VIDEO",numFaces:1,outputFacialTransformationMatrixes:true});
+ try{fl=await FaceLandmarker.createFromOptions(fs,opts("GPU"))}catch(e){fl=await FaceLandmarker.createFromOptions(fs,opts("CPU"))}
+}
+
+let lastVT=-1;
+function loop(now){
+ requestAnimationFrame(loop);
+ if(fl&&video.readyState>=2&&video.currentTime!==lastVT){
+  lastVT=video.currentTime;
+  try{
+   const r=fl.detectForVideo(video,now);
+   const M=r.facialTransformationMatrixes&&r.facialTransformationMatrixes[0];
+   if(M){anchor.matrix.fromArray(M.data);anchor.matrixWorldNeedsUpdate=true;anchor.visible=true;status("✓ Cara detectada")}
+   else{anchor.visible=false;status("Busca tu cara…")}
+  }catch(e){}
+ }
+ renderer.render(scene,camera);
+}
+
+$("go").onclick=async()=>{
+ $("splash").remove();
+ try{
+  video.srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1280},height:{ideal:720}},audio:false});
+  await video.play();
+ }catch(e){status("Sin cámara: "+e.message);return}
+ status("Cargando face tracking…");
+ requestAnimationFrame(loop);
+ try{await initFace();status("Busca tu cara…")}catch(e){console.error(e);status("Face tracking no disponible")}
+};
+
+/* ---------- Foto (cámara + visor) ---------- */
+$("shot").onclick=()=>{
+ const w=canvas.width,h=canvas.height,o=document.createElement("canvas");o.width=w;o.height=h;
+ const x=o.getContext("2d");x.translate(w,0);x.scale(-1,1);
+ x.drawImage(video,0,0,w,h);x.drawImage(canvas,0,0,w,h);
+ const a=document.createElement("a");a.download="mise_visor.png";a.href=o.toDataURL("image/png");a.click();
+};
+</script>
+</body>
+</html>
