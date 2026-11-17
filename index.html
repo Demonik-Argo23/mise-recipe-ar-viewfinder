@@ -54,6 +54,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .done .txt{font-size:32px;font-weight:600;text-shadow:0 2px 12px #0008}
 .mic{position:absolute;top:14px;right:14px;font-size:12px;padding:4px 10px;border-radius:12px;background:rgba(0,0,0,.4)}
 .mic.off{background:rgba(255,90,79,.7)}
+/* Gestos */
+.gest{position:absolute;top:14px;left:14px;font-size:12px;padding:4px 10px;border-radius:12px;background:rgba(0,0,0,.4);transition:transform .2s,background .2s;zoom:var(--z,.6)}
+.gest.flash{background:#34C759;transform:scale(1.25)}
+.stereo .gest{top:auto;bottom:7%;left:0;right:0;margin:auto;width:fit-content;zoom:calc(var(--vz,.7) * .6)}
+.pill{position:absolute;left:0;right:0;margin:0 auto;top:6%;width:fit-content;max-width:80%;padding:6px 14px;border-radius:16px;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transform:translateY(-10px);transition:opacity .35s,transform .35s;zoom:var(--z,.6)}
+.stereo .pill{top:18%;zoom:calc(var(--vz,.7) * .6)}
+#stage.min .pill{opacity:1;transform:none}
+#stage.min .card,#stage.min .ov{opacity:0!important;transform:scale(.92)!important;transition:opacity .35s,transform .35s}
+#stage.min .timers{opacity:.8}
 .hidden{display:none!important}
 .ov,.card,.timers,.mic{zoom:var(--z,.6)}
 /* Visor: cada ojo es un círculo centrado bajo su lente */
@@ -149,19 +158,19 @@ function overviewHTML(){
 <div class="cols"><div><h3>Ingredientes</h3><ul>${RECIPE.ingredients.map(([n,q])=>`<li><span>${n}</span><b>${q}</b></li>`).join("")}</ul></div>
 <div><h3>Utensilios</h3><ul>${RECIPE.tools.map(t=>`<li><span>${t}</span></li>`).join("")}</ul></div></div>
 <h3 class="stepsH" style="margin-top:14px">Pasos</h3><ol>${STEPS.map(s=>`<li>${s.t}</li>`).join("")}</ol>
-<div class="go">Di “Iniciar” o toca aquí</div>
-<div class="mini"><b>${RECIPE.name}</b>${RECIPE.ingredients.length} ingredientes · ${STEPS.length} pasos · 30 min<div class="go2">Palanca o di “Iniciar”</div></div>`;
+<div class="go">Di “Iniciar”, haz 👌 o toca aquí<br><span style="font-weight:400;opacity:.7;font-size:12px">✋ mano abierta: ocultar / mostrar receta</span></div>
+<div class="mini"><b>${RECIPE.name}</b>${RECIPE.ingredients.length} ingredientes · ${STEPS.length} pasos · 30 min<div class="go2">Palanca, 👌 o di “Iniciar”</div></div>`;
 }
 function eyeHTML(side=""){return `<div class="eye ${side}"><video autoplay playsinline muted></video><div class="hud">
 <div class="ov glass"></div><div class="card glass hidden"></div><div class="timers"></div>
-<div class="done"><div class="ck">✓</div><div class="txt"></div></div><div class="mic"></div></div></div>`}
+<div class="done"><div class="ck">✓</div><div class="txt"></div></div><div class="mic"></div><div class="gest">✋ cargando…</div><div class="pill glass"></div></div></div>`}
 
 function build(){
  stage.innerHTML=stereo?eyeHTML("L")+eyeHTML("R"):eyeHTML();
  stage.classList.toggle("stereo",stereo);
  stage.querySelectorAll("video").forEach(v=>v.srcObject=stream);
  stage.querySelectorAll(".ov").forEach(o=>o.innerHTML=overviewHTML());
- applyPhase();renderCard(false);renderTimers();renderMic();
+ applyPhase();renderCard(false);renderTimers();renderMic();setGest(gestState);
 }
 function applyPhase(){
  stage.querySelectorAll(".ov").forEach(o=>o.classList.toggle("hidden",phase!=="overview"));
@@ -178,7 +187,12 @@ function cardHTML(){
 ${s.q?`<div class="tags">${s.q.map(x=>`<span class="tag">${x}</span>`).join("")}</div>`:""}
 <div class="nxt">${n?"Siguiente: "+n.t:"Último paso"}</div>`;
 }
-function renderCard(anim=true){
+function pillText(){return phase==="overview"?RECIPE.name:phase==="done"?"Listo":`${step+1}/${STEPS.length} · ${STEPS[step].t}`}
+function renderPill(){stage.querySelectorAll(".pill").forEach(p=>p.textContent=pillText())}
+function toggleMin(force){stage.classList.toggle("min",force);renderPill()}
+let gestState="✋ cargando…";
+function setGest(t,flash){gestState=t;stage.querySelectorAll(".gest").forEach(g=>{g.textContent=t;if(flash){g.classList.add("flash");setTimeout(()=>g.classList.remove("flash"),500)}})}
+function renderCard(anim=true){renderPill();
  stage.querySelectorAll(".card").forEach(c=>{
   if(!anim){c.innerHTML=cardHTML();return}
   c.classList.add("out");
@@ -298,6 +312,65 @@ document.getElementById("stereoBtn").onclick=e=>{e.stopPropagation();setStereo(t
 const SIZES=[["S",.6],["M",.8],["L",1],["XS",.45]];let si=0;
 document.getElementById("sizeBtn").onclick=e=>{e.stopPropagation();si=(si+1)%SIZES.length;document.documentElement.style.setProperty("--z",SIZES[si][1]);e.target.textContent="Tamaño "+SIZES[si][0]};
 document.getElementById("speedBtn").onclick=e=>{e.stopPropagation();speed=speed===1?10:speed===10?30:1;e.target.textContent="Velocidad x"+speed};
+</script>
+<script type="module">
+/* ---------- Gestos con la mano (MediaPipe) ---------- */
+const V="0.10.21";
+const MODEL="https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task";
+let gr=null;
+const det=document.createElement("video");
+det.muted=true;det.playsInline=true;det.setAttribute("playsinline","");
+det.style.cssText="position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;left:0;top:0";
+document.body.appendChild(det);
+
+async function init(){
+ try{
+  const {FilesetResolver,GestureRecognizer}=await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${V}/vision_bundle.mjs`);
+  const fs=await FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${V}/wasm`);
+  const opts=d=>({baseOptions:{modelAssetPath:MODEL,delegate:d},runningMode:"VIDEO",numHands:1,minHandDetectionConfidence:.6,minHandPresenceConfidence:.6,minTrackingConfidence:.5});
+  try{gr=await GestureRecognizer.createFromOptions(fs,opts("GPU"))}catch(e){gr=await GestureRecognizer.createFromOptions(fs,opts("CPU"))}
+  setGest("✋ 👌 listo");
+ }catch(e){console.error(e);setGest("gestos no disponibles")}
+}
+
+// 👌: punta de pulgar e índice juntas, los otros 3 dedos estirados
+function isOK(L){
+ const d=(a,b)=>Math.hypot(L[a].x-L[b].x,L[a].y-L[b].y),s=d(0,9);
+ return d(4,8)/s<.35&&d(0,12)>d(0,10)*1.15&&d(0,16)>d(0,14)*1.15&&d(0,20)>d(0,18)*1.1;
+}
+
+const HOLD=4;  // cuadros seguidos para confirmar (~0.4 s)
+let cur="none",count=0,armed=true,noneCount=0,lastT=0;
+function classify(res){
+ if(!res.landmarks||!res.landmarks.length)return "none";
+ if(isOK(res.landmarks[0]))return "ok";
+ const c=res.gestures&&res.gestures[0]&&res.gestures[0][0];
+ if(c&&c.categoryName==="Open_Palm"&&c.score>.6)return "palm";
+ return "other";
+}
+function fire(g){
+ if(g==="palm"){toggleMin();setGest(stage.classList.contains("min")?"✋ receta oculta":"✋ receta visible",true)}
+ if(g==="ok"){stage.classList.remove("min");next();renderPill();setGest("👌 siguiente",true)}
+}
+function loop(now){
+ requestAnimationFrame(loop);
+ if(!gr||det.readyState<2||now-lastT<90)return;
+ lastT=now;
+ let g;
+ try{g=classify(gr.recognizeForVideo(det,now))}catch(e){return}
+ if(g==="none"||g==="other"){if(++noneCount>=3)armed=true;cur="none";count=0;return}
+ noneCount=0;
+ if(g===cur)count++;else{cur=g;count=1}
+ if(count===HOLD&&armed){armed=false;fire(g)}  // hay que bajar la mano para el siguiente gesto
+}
+
+const wait=setInterval(()=>{
+ if(typeof stream!=="undefined"&&stream){
+  clearInterval(wait);
+  det.srcObject=stream;det.play().catch(()=>{});
+  init();requestAnimationFrame(loop);
+ }
+},300);
 </script>
 </body>
 </html>
