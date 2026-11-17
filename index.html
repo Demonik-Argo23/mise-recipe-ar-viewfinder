@@ -56,9 +56,27 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 .mic.off{background:rgba(255,90,79,.7)}
 .hidden{display:none!important}
 .ov,.card,.timers,.mic{zoom:var(--z,.6)}
-.stereo .ov,.stereo .card,.stereo .timers,.stereo .mic{zoom:1}
-.stereo .eye{border-right:1px solid #000}
-body.vr #ui{display:none}
+/* Visor: cada ojo es un círculo centrado bajo su lente */
+#stage.stereo{display:block}
+.stereo .eye{position:absolute;flex:none;width:var(--vp,300px);height:var(--vp,300px);top:calc(50% - var(--vp,300px)/2 + var(--vy,0px));border-radius:50%}
+.stereo .eye.L{left:calc(50% - var(--ipd,320px)/2 - var(--vp,300px)/2)}
+.stereo .eye.R{left:calc(50% + var(--ipd,320px)/2 - var(--vp,300px)/2)}
+.stereo .ov,.stereo .card,.stereo .timers,.stereo .mic{zoom:var(--vz,.8)}
+.stereo .ov{width:70%;max-height:none;overflow:hidden;padding:10px 14px}
+.stereo .ov .chips{display:none}
+.stereo .ov li{padding:1px 0}
+.stereo .cols>div:nth-child(2),.stereo .ov ol,.stereo .ov .stepsH,.stereo .ov .sub,.stereo .ov .go{display:none}
+.stereo .card{top:22%;width:70%}
+.stereo .timers{bottom:14%}
+.stereo .mic{top:7%;left:0;right:0;margin:auto;width:fit-content}
+body.cal .eye::after{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid #FFB340;pointer-events:none}
+body.cal .eye::before{content:"+";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:40px;color:#FFB340;z-index:2}
+body.vr #ui,body.cal #ui{display:none}
+#cal{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:6;display:none;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;padding:10px 14px;border-radius:18px;background:#000c;font-size:12px;max-width:96%}
+body.cal #cal{display:flex}
+#cal label{display:flex;flex-direction:column;gap:2px}
+#cal input{width:110px}
+#cal button{padding:8px 14px;border-radius:14px;border:1px solid #fff4;background:#fff2;color:#fff}
 
 #ui{position:fixed;bottom:12px;left:12px;display:flex;gap:8px;z-index:5}
 #ui button{padding:8px 12px;border-radius:16px;border:1px solid #fff4;background:#0006;color:#fff;font-size:12px}
@@ -66,7 +84,7 @@ body.vr #ui{display:none}
 .stereo .ov{padding:12px;border-radius:16px}
 .stereo .ov h2{font-size:18px}.stereo .cols{grid-template-columns:1fr}.stereo .ov ol{columns:1}
 .stereo .ov li{font-size:11px;padding:2px 0}.stereo .chip{font-size:10px}
-.stereo .card{width:88%;padding:12px 14px;border-radius:16px}
+.stereo .card{padding:12px 14px;border-radius:16px}
 .stereo .cur{font-size:17px}.stereo .det{font-size:12px}.stereo .nxt{font-size:11px}.stereo .tag{font-size:10px}
 .stereo .timers{gap:8px}.stereo .t svg{width:56px;height:56px}
 @keyframes fade{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
@@ -78,6 +96,12 @@ body.vr #ui{display:none}
 <body>
 <div id="splash"><h1>Mise</h1><p>Cada paso, en su lugar.</p><button id="open">Abrir</button></div>
 <div id="stage"></div>
+<div id="cal">
+<label>Separación<input id="cIpd" type="range" min="150" max="700"></label>
+<label>Tamaño vista<input id="cVp" type="range" min="120" max="500"></label>
+<label>Altura<input id="cVy" type="range" min="-120" max="120"></label>
+<label>Texto<input id="cVz" type="range" min="35" max="120"></label>
+<button id="cGo">Probar</button><button id="cExit">Salir</button></div>
 <div id="ui"><button id="stereoBtn">Modo cartón</button><button id="sizeBtn">Tamaño S</button><button id="speedBtn">Velocidad x1</button></div>
 
 <script>
@@ -116,15 +140,15 @@ function overviewHTML(){
 <div class="chips">${RECIPE.chips.map(c=>`<span class="chip">${c}</span>`).join("")}</div>
 <div class="cols"><div><h3>Ingredientes</h3><ul>${RECIPE.ingredients.map(([n,q])=>`<li><span>${n}</span><b>${q}</b></li>`).join("")}</ul></div>
 <div><h3>Utensilios</h3><ul>${RECIPE.tools.map(t=>`<li><span>${t}</span></li>`).join("")}</ul></div></div>
-<h3 style="margin-top:14px">Pasos</h3><ol>${STEPS.map(s=>`<li>${s.t}</li>`).join("")}</ol>
+<h3 class="stepsH" style="margin-top:14px">Pasos</h3><ol>${STEPS.map(s=>`<li>${s.t}</li>`).join("")}</ol>
 <div class="go">Di “Iniciar” o toca aquí</div>`;
 }
-function eyeHTML(){return `<div class="eye"><video autoplay playsinline muted></video><div class="hud">
+function eyeHTML(side=""){return `<div class="eye ${side}"><video autoplay playsinline muted></video><div class="hud">
 <div class="ov glass"></div><div class="card glass hidden"></div><div class="timers"></div>
 <div class="done"><div class="ck">✓</div><div class="txt"></div></div><div class="mic"></div></div></div>`}
 
 function build(){
- stage.innerHTML=eyeHTML()+(stereo?eyeHTML():"");
+ stage.innerHTML=stereo?eyeHTML("L")+eyeHTML("R"):eyeHTML();
  stage.classList.toggle("stereo",stereo);
  stage.querySelectorAll("video").forEach(v=>v.srcObject=stream);
  stage.querySelectorAll(".ov").forEach(o=>o.innerHTML=overviewHTML());
@@ -226,18 +250,34 @@ async function lock(){try{await navigator.wakeLock.request("screen")}catch(e){}}
 /* ---------- Eventos ---------- */
 // En modo cartón/View-Master: cualquier toque (palanca) = siguiente. Mantener presionado 1 s = salir.
 let pressT=0,longFired=false;
-stage.addEventListener("pointerdown",()=>{longFired=false;pressT=setTimeout(()=>{if(stereo){longFired=true;setStereo(false)}},1000)});
+stage.addEventListener("pointerdown",()=>{longFired=false;pressT=setTimeout(()=>{if(stereo&&document.body.classList.contains("vr")){longFired=true;calMode()}},1000)});
 stage.addEventListener("pointerup",()=>clearTimeout(pressT));
 stage.addEventListener("click",e=>{
  if(longFired)return;
  if(phase==="overview")return begin();
+ if(document.body.classList.contains("cal"))return;
  if(stereo)return next();
  e.clientX>innerWidth/2?next():prev();
 });
 function setStereo(v){
- stereo=v;document.body.classList.toggle("vr",v);build();
- if(v){try{document.documentElement.requestFullscreen().then(()=>screen.orientation.lock("landscape")).catch(()=>{})}catch(e){}}
+ stereo=v;document.body.classList.remove("vr","cal");build();
+ if(v){calMode();try{document.documentElement.requestFullscreen().then(()=>screen.orientation.lock("landscape")).catch(()=>{})}catch(e){}}
 }
+/* ---------- Calibración del visor (se guarda) ---------- */
+const CAL_KEYS={ipd:["cIpd","px"],vp:["cVp","px"],vy:["cVy","px"],vz:["cVz",""]};
+let cal={ipd:Math.round(innerWidth*.45),vp:Math.round(Math.min(innerWidth*.36,innerHeight*.8)),vy:0,vz:70};
+try{Object.assign(cal,JSON.parse(localStorage.getItem("miseCal")||"{}"))}catch(e){}
+function applyCal(){
+ const r=document.documentElement.style;
+ r.setProperty("--ipd",cal.ipd+"px");r.setProperty("--vp",cal.vp+"px");r.setProperty("--vy",cal.vy+"px");r.setProperty("--vz",cal.vz/100);
+ try{localStorage.setItem("miseCal",JSON.stringify(cal))}catch(e){}
+}
+for(const[k,[id]]of Object.entries(CAL_KEYS)){const el=document.getElementById(id);el.value=cal[k];el.oninput=()=>{cal[k]=+el.value;applyCal()}}
+applyCal();
+function calMode(){document.body.classList.remove("vr");document.body.classList.add("cal")}
+document.getElementById("cGo").onclick=e=>{e.stopPropagation();document.body.classList.remove("cal");document.body.classList.add("vr")};
+document.getElementById("cExit").onclick=e=>{e.stopPropagation();setStereo(false)};
+document.getElementById("cal").addEventListener("click",e=>e.stopPropagation());
 document.getElementById("open").onclick=async()=>{
  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false})}
  catch(e){alert("Sin cámara: "+e.message)}
